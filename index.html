@@ -543,6 +543,9 @@ const CONFIG = {
   claudeModel:  'claude-sonnet-4-6',
 };
 
+// Resolves once msalInstance.initialize() has completed
+let initPromise;
+
 // ================================================================
 // STATE
 // ================================================================
@@ -571,7 +574,13 @@ const msalInstance = new msal.PublicClientApplication({
 
 async function signIn() {
   try {
+    await initPromise; // ensure msalInstance.initialize() has completed
     showLoading('Signing in...');
+    // Mobile browsers block popups; use redirect flow instead
+    if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      await msalInstance.loginRedirect({ scopes: CONFIG.scopes });
+      return; // page reloads after redirect; result handled in init()
+    }
     const result = await msalInstance.loginPopup({ scopes: CONFIG.scopes });
     state.account = result.account;
     await onAuthenticated();
@@ -1196,7 +1205,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch(() => {});
 }
 
-init();
+initPromise = init();
 </script>
 </body>
 </html>
