@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="JobScout">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.json">
+  <title>JobScout</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --high: #16a34a;
+      --mid: #d97706;
+      --low: #dc2626;
+      --nav-height: 64px;
+      --header-height: 56px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ── Loading overlay ── */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(255,255,255,0.88);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+    }
+    #loading-overlay.hidden { display: none; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-msg { color: var(--text-muted); font-size: 14px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--nav-height) + 16px + var(--safe-bottom));
+      left: 50%; transform: translateX(-50%) translateY(8px);
+      background: var(--text); color: white;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 14px; white-space: nowrap;
+      opacity: 0; transition: opacity 0.2s, transform 0.2s;
+      z-index: 150; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.success { background: var(--high); }
+    #toast.error { background: var(--low); }
+
+    /* ── Login ── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px; gap: 20px;
+    }
+    #login-screen.hidden { display: none; }
+    .login-logo {
+      width: 80px; height: 80px;
+      background: var(--primary); border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px; font-weight: 800; color: white;
+      letter-spacing: -1px;
+    }
+    .login-title { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+    .login-sub { color: var(--text-muted); text-align: center; max-width: 300px; line-height: 1.5; font-size: 15px; }
+    .btn-ms {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--primary); color: white;
+      border: none; border-radius: 10px;
+      padding: 14px 24px; font-size: 16px; font-weight: 600;
+      cursor: pointer; width: 100%; max-width: 300px;
+      transition: background 0.15s;
+    }
+    .btn-ms:hover { background: var(--primary-dark); }
+    .login-note { font-size: 12px; color: var(--text-muted); max-width: 280px; text-align: center; line-height: 1.5; }
+
+    /* ── App shell ── */
+    #app { min-height: 100vh; }
+    #app.hidden { display: none; }
+
+    /* ── Header ── */
+    #header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      height: calc(var(--header-height) + var(--safe-top));
+      padding-top: var(--safe-top);
+      background: white; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding-left: 16px; padding-right: 16px;
+    }
+    .header-title { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: -0.3px; }
+    .header-user { font-size: 12px; color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Views ── */
+    .view {
+      display: none;
+      padding: calc(var(--header-height) + var(--safe-top) + 20px) 16px calc(var(--nav-height) + var(--safe-bottom) + 20px);
+      min-height: 100vh;
+    }
+    .view.active { display: block; }
+    .view-inner { max-width: 640px; margin: 0 auto; }
+    .view-title { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 18px; }
+
+    /* ── Bottom nav ── */
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      height: calc(var(--nav-height) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: white; border-top: 1px solid var(--border);
+      display: flex; align-items: stretch;
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      border: none; background: none; cursor: pointer;
+      color: var(--text-muted); font-size: 11px; font-weight: 500;
+      transition: color 0.15s; padding: 0 4px;
+    }
+    .nav-btn.active { color: var(--primary); }
+    .nav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 18px; border-radius: 10px;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      border: none; cursor: pointer; width: 100%;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-secondary { background: white; color: var(--text); border: 1.5px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--bg); }
+    .btn-danger { background: #fef2f2; color: var(--low); border: 1.5px solid #fecaca; }
+    .btn-sm { padding: 8px 14px; font-size: 14px; width: auto; border-radius: 8px; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── Form elements ── */
+    .form-group { margin-bottom: 14px; }
+    label {
+      display: block; font-size: 12px; font-weight: 700;
+      color: var(--text-muted); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    input[type=text], input[type=email], input[type=password], textarea, select {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 16px; font-family: inherit; color: var(--text);
+      background: white; outline: none; appearance: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    input::placeholder, textarea::placeholder { color: #94a3b8; }
+    textarea {
+      min-height: 240px; resize: vertical; line-height: 1.55;
+      font-size: 15px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: white; border-radius: 14px;
+      padding: 16px; margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+
+    /* ── Score badge ── */
+    .score-badge {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: white; flex-shrink: 0;
+    }
+    .score-badge.lg { width: 58px; height: 58px; font-size: 22px; border-radius: 14px; }
+    .score-badge.high { background: var(--high); }
+    .score-badge.mid { background: var(--mid); }
+    .score-badge.low { background: var(--low); }
+
+    /* ── Scorecard ── */
+    .sc-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+    .sc-meta h2 { font-size: 19px; font-weight: 700; line-height: 1.25; margin-bottom: 3px; }
+    .sc-meta .sc-company { color: var(--text-muted); font-size: 14px; }
+    .sc-meta .sc-date { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+    .score-rows { border-radius: 14px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; margin-bottom: 12px; }
+    .score-row {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+    }
+    .score-row:last-child { border-bottom: none; }
+    .score-row-body { flex: 1; min-width: 0; }
+    .score-row-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .score-row-text { font-size: 14px; line-height: 1.55; color: var(--text); }
+    .rec-box { background: #eff6ff; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+    .rec-box-label { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rec-box p { font-size: 15px; line-height: 1.55; }
+    .sc-url { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; word-break: break-all; }
+    .sc-url a { color: var(--primary); }
+
+    /* ── History ── */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+    .filter-chip {
+      padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--border); background: white; color: var(--text-muted);
+      cursor: pointer; white-space: nowrap; flex-shrink: 0; font-family: inherit;
+    }
+    .filter-chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+    .history-item {
+      display: flex; align-items: center; gap: 12px;
+      background: white; border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 10px; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      transition: box-shadow 0.15s;
+    }
+    .history-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+    .history-item-body { flex: 1; min-width: 0; }
+    .history-item-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-item-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-item-date { font-size: 12px; color: var(--text-muted); flex-shrink: 0; text-align: right; }
+    #history-count { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Reports ── */
+    .range-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .range-pill {
+      padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--border); background: white; color: var(--text-muted);
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .range-pill.active { background: var(--primary); border-color: var(--primary); color: white; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-card { background: white; border-radius: 12px; padding: 14px 10px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+    #digest-output {
+      background: white; border-radius: 14px; padding: 18px;
+      margin: 14px 0; font-size: 14px; line-height: 1.7;
+      color: var(--text); white-space: pre-wrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      display: none;
+    }
+    #digest-output.show { display: block; }
+    #digest-actions { display: none; margin-top: 0; }
+
+    /* ── Settings ── */
+    .settings-section { margin-bottom: 28px; }
+    .settings-section-title {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 8px; padding: 0 4px;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .status-dot.green { background: var(--high); }
+    .status-dot.red { background: var(--low); }
+    .settings-status {
+      background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 2px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .settings-status-label { font-size: 15px; font-weight: 500; }
+    .settings-status-val { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 52px 24px; color: var(--text-muted); }
+    .empty-icon { font-size: 44px; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; line-height: 1.55; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ── Responsive: tablet ── */
+    @media (min-width: 600px) {
+      .view { padding-left: 24px; padding-right: 24px; }
+    }
+
+    /* ── Responsive: desktop ── */
+    @media (min-width: 900px) {
+      #bottom-nav {
+        position: fixed; top: 0; left: 0; bottom: 0; right: auto; width: 230px;
+        height: 100%; flex-direction: column; border-top: none;
+        border-right: 1px solid var(--border); padding: calc(var(--header-height) + 24px) 12px 24px;
+        align-items: stretch; justify-content: flex-start; gap: 2px;
+        padding-bottom: var(--safe-bottom);
+      }
+      .nav-btn {
+        flex-direction: row; justify-content: flex-start;
+        padding: 10px 14px; border-radius: 10px;
+        font-size: 14px; gap: 10px; flex: none;
+      }
+      .nav-btn.active { background: #eff6ff; color: var(--primary); }
+      .view { padding-left: calc(230px + 28px); padding-right: 28px; }
+      #header { padding-left: calc(230px + 28px); }
+      #toast { bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="hidden">
+  <div class="spinner"></div>
+  <div id="loading-msg">Loading...</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ── Login ── -->
+<div id="login-screen">
+  <div class="login-logo">JS</div>
+  <div class="login-title">JobScout</div>
+  <div class="login-sub">Evaluate job listings against your priorities. Track your search. Share your progress.</div>
+  <button class="btn-ms" onclick="signIn()">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect width="9.5" height="9.5" fill="#f25022"/>
+      <rect x="10.5" width="9.5" height="9.5" fill="#7fba00"/>
+      <rect y="10.5" width="9.5" height="9.5" fill="#00a4ef"/>
+      <rect x="10.5" y="10.5" width="9.5" height="9.5" fill="#ffb900"/>
+    </svg>
+    Sign in with Microsoft
+  </button>
+  <div class="login-note">Uses your Microsoft account for secure, cross-device storage via OneDrive.</div>
+</div>
+
+<!-- ── App ── -->
+<div id="app" class="hidden">
+
+  <div id="header">
+    <div class="header-title">JobScout</div>
+    <div class="header-user" id="header-user"></div>
+  </div>
+
+  <!-- Evaluate -->
+  <div id="view-evaluate" class="view active">
+    <div class="view-inner">
+      <div class="view-title">Evaluate a Job</div>
+      <div class="form-group">
+        <label>Job Listing URL <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="input-url" placeholder="https://..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="form-group">
+        <label>Source <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="input-source" placeholder="e.g., Ariel via iMessage, LinkedIn digest, Indeed" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Job Description *</label>
+        <textarea id="input-description" placeholder="Paste the full job description here — title, company, responsibilities, requirements, location, and compensation if listed. The more detail, the better the evaluation."></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-evaluate" onclick="runEvaluation()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Evaluate
+      </button>
+    </div>
+  </div>
+
+  <!-- Scorecard (pending — unsaved) -->
+  <div id="view-scorecard" class="view">
+    <div class="view-inner">
+      <div style="font-size:13px;font-weight:600;color:var(--primary);background:#eff6ff;padding:10px 14px;border-radius:10px;margin-bottom:16px">
+        ✦ Evaluation complete — review and save below.
+      </div>
+      <div id="scorecard-content"></div>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-primary" onclick="saveEvaluation()">Save to OneDrive</button>
+        <button class="btn btn-secondary" onclick="discardEvaluation()">Discard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="view-history" class="view">
+    <div class="view-inner">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="view-title" style="margin:0">History</div>
+        <div id="history-count"></div>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-chip active" data-min="0" onclick="setScoreFilter(this,0)">All</button>
+        <button class="filter-chip" data-min="8" onclick="setScoreFilter(this,8)">Strong (8+)</button>
+        <button class="filter-chip" data-min="5" onclick="setScoreFilter(this,5)">Partial (5+)</button>
+        <button class="filter-chip" data-min="0" data-sort="date" onclick="setScoreFilter(this,0)">Recent</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- Detail (saved eval) -->
+  <div id="view-detail" class="view">
+    <div class="view-inner">
+      <button class="btn btn-secondary btn-sm" style="display:inline-flex;margin-bottom:16px" onclick="navigate('history')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <div id="detail-content"></div>
+      <div class="divider"></div>
+      <button class="btn btn-danger" onclick="deleteCurrentEval()">Delete This Evaluation</button>
+    </div>
+  </div>
+
+  <!-- Reports -->
+  <div id="view-reports" class="view">
+    <div class="view-inner">
+      <div class="view-title">Reports</div>
+      <div class="range-pills">
+        <button class="range-pill active" data-range="3" onclick="setRange(this,3)">Last 3 days</button>
+        <button class="range-pill" data-range="7" onclick="setRange(this,7)">This week</button>
+        <button class="range-pill" data-range="30" onclick="setRange(this,30)">This month</button>
+        <button class="range-pill" data-range="0" onclick="setRange(this,0)">All time</button>
+      </div>
+      <div class="stats-row" id="report-stats"></div>
+      <button class="btn btn-primary" id="btn-digest" onclick="generateDigest()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Generate Digest
+      </button>
+      <div id="digest-output"></div>
+      <div id="digest-actions" class="btn-row">
+        <button class="btn btn-primary" onclick="emailDigest()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Email Digest to Me
+        </button>
+        <button class="btn btn-secondary" onclick="clearDigest()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="view-settings" class="view">
+    <div class="view-inner">
+      <div class="view-title">Settings</div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Claude API</div>
+        <div class="card">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Anthropic API Key</label>
+            <input type="password" id="settings-api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Email (for digests)</div>
+        <div class="card">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Your email address</label>
+            <input type="email" id="settings-email" placeholder="you@outlook.com" autocomplete="email">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Account</div>
+        <div class="settings-status">
+          <span class="settings-status-label">Microsoft Account</span>
+          <span class="settings-status-val" id="settings-ms-status"></span>
+        </div>
+        <div class="settings-status" style="margin-top:6px">
+          <span class="settings-status-label">OneDrive</span>
+          <span class="settings-status-val" id="settings-od-status"><span class="status-dot red"></span>Not connected</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:10px">Save Settings</button>
+      <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+
+      <div style="margin-top:24px;padding:14px;background:#f8fafc;border-radius:12px;border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Setup Note</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
+          This app requires an <strong style="color:var(--text)">Azure App Registration</strong> with your Client ID set in the code config. See the README for setup instructions.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-view="evaluate" onclick="navigate('evaluate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Evaluate
+    </button>
+    <button class="nav-btn" data-view="history" onclick="navigate('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      History
+    </button>
+    <button class="nav-btn" data-view="reports" onclick="navigate('reports')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reports
+    </button>
+    <button class="nav-btn" data-view="settings" onclick="navigate('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+
+</div><!-- #app -->
+
+<!-- MSAL -->
+<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+
+<script>
+// ================================================================
+// CONFIGURATION
+// ----------------------------------------------------------------
+// 1. Create an Azure App Registration at portal.azure.com
+//    - Account type: Personal Microsoft accounts only
+//    - Platform: Single-page application (SPA)
+//    - Redirect URI: https://YOUR-USERNAME.github.io/job-scout/
+//      (also add http://localhost:PORT for local testing)
+// 2. Grant API permissions: User.Read, Files.ReadWrite, Mail.Send
+// 3. Paste your Client ID below
+// ================================================================
+const MSAL_CLIENT_ID = 'YOUR_AZURE_APP_CLIENT_ID';
+
+const CONFIG = {
+  authority:    'https://login.microsoftonline.com/consumers',
+  graphBase:    'https://graph.microsoft.com/v1.0',
+  scopes:       ['User.Read', 'Files.ReadWrite', 'Mail.Send'],
+  odPath:       '/me/drive/root:/JobScout',
+  claudeApi:    'https://api.anthropic.com/v1/messages',
+  claudeModel:  'claude-sonnet-4-6',
+};
+
+// ================================================================
+// STATE
+// ================================================================
+const state = {
+  account:         null,
+  evaluations:     [],
+  settings:        { apiKey: '', userEmail: '' },
+  pendingEval:     null,
+  currentDetailId: null,
+  reportRange:     3,
+  digestText:      null,
+  oneDriveReady:   false,
+};
+
+// ================================================================
+// MSAL AUTH
+// ================================================================
+const msalInstance = new msal.PublicClientApplication({
+  auth: {
+    clientId:    MSAL_CLIENT_ID,
+    authority:   CONFIG.authority,
+    redirectUri: window.location.origin + window.location.pathname,
+  },
+  cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
+});
+
+async function signIn() {
+  try {
+    showLoading('Signing in...');
+    const result = await msalInstance.loginPopup({ scopes: CONFIG.scopes });
+    state.account = result.account;
+    await onAuthenticated();
+  } catch (e) {
+    hideLoading();
+    showToast('Sign-in failed: ' + (e.message || e), 'error');
+  }
+}
+
+async function signOut() {
+  if (!confirm('Sign out of JobScout?')) return;
+  try {
+    await msalInstance.logoutPopup({ account: state.account });
+  } catch { /* ignore */ }
+  state.account = null;
+  state.evaluations = [];
+  state.settings = { apiKey: '', userEmail: '' };
+  state.oneDriveReady = false;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+async function getToken() {
+  try {
+    const r = await msalInstance.acquireTokenSilent({ scopes: CONFIG.scopes, account: state.account });
+    return r.accessToken;
+  } catch {
+    const r = await msalInstance.acquireTokenPopup({ scopes: CONFIG.scopes, account: state.account });
+    return r.accessToken;
+  }
+}
+
+// ================================================================
+// MICROSOFT GRAPH
+// ================================================================
+async function graphFetch(endpoint, method = 'GET', body = null) {
+  const token = await getToken();
+  const opts = {
+    method,
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+  };
+  if (body !== null) opts.body = JSON.stringify(body);
+  const res = await fetch(CONFIG.graphBase + endpoint, opts);
+  if (res.status === 404) return null;
+  if (res.status === 204) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Graph error ' + res.status);
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : res.text();
+}
+
+async function readOD(filename) {
+  try {
+    const data = await graphFetch(`${CONFIG.odPath}/${filename}:/content`);
+    if (!data) return null;
+    if (typeof data === 'string') return JSON.parse(data);
+    return data;
+  } catch { return null; }
+}
+
+async function writeOD(filename, data) {
+  const token = await getToken();
+  const res = await fetch(
+    `${CONFIG.graphBase}${CONFIG.odPath}/${filename}:/content`,
+    {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data, null, 2),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'OneDrive write error ' + res.status);
+  }
+  state.oneDriveReady = true;
+  updateODStatus();
+}
+
+async function loadFromOneDrive() {
+  const [evals, settings] = await Promise.all([
+    readOD('evaluations.json'),
+    readOD('settings.json'),
+  ]);
+  state.evaluations = Array.isArray(evals) ? evals : [];
+  if (settings && typeof settings === 'object') state.settings = settings;
+  state.oneDriveReady = true;
+  updateODStatus();
+}
+
+async function sendEmailViaGraph(subject, htmlBody) {
+  if (!state.settings.userEmail) throw new Error('No email address set in Settings.');
+  await graphFetch('/me/sendMail', 'POST', {
+    message: {
+      subject,
+      body: { contentType: 'HTML', content: htmlBody },
+      toRecipients: [{ emailAddress: { address: state.settings.userEmail } }],
+    },
+    saveToSentItems: true,
+  });
+}
+
+// ================================================================
+// CLAUDE API
+// ================================================================
+async function callClaude(system, user, maxTokens = 2000) {
+  if (!state.settings.apiKey) throw new Error('No Anthropic API key set. Add it in Settings.');
+  const res = await fetch(CONFIG.claudeApi, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.settings.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: CONFIG.claudeModel,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Claude API error ' + res.status);
+  }
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+// ── Candidate profile baked into every evaluation ──
+const CANDIDATE_PROFILE = `CANDIDATE PROFILE:
+- Name: Ken
+- Current Role: IT Operations Manager
+- Core Skills: IT infrastructure, device management, Microsoft 365 administration, Azure Entra ID, Python development, process automation, project management
+- Currently Building: Python-based email assistant integrated with Microsoft 365 via Azure Entra
+- Career Preference: Internal-facing IT operations (supporting employees and internal teams) — NOT external customer-facing technical support
+- Role Type: Individual contributor preferred; people manager roles acceptable but not required
+
+LOCATION & SCHEDULE REQUIREMENTS:
+- Based in: Portland, OR metro area
+- If role is outside Portland: must be FULLY REMOTE — no exceptions
+- If role is in Portland: remote or hybrid acceptable (depends on commute reasonableness)
+- Schedule: Must NOT require fixed start/end times — flexibility is essential for family (school drop-off/pickup, children's activities, early mornings, evenings)
+
+COMPENSATION:
+- Minimum: $100,000/year
+- Preferred: $115,000+
+- If compensation is not listed, note this in the summary and score conservatively`;
+
+const EVAL_SYSTEM = `You are a career advisor evaluating job listings for a specific person. Analyze the job listing carefully and return a structured JSON evaluation. Be honest and specific. Do not invent information you do not have. Return ONLY valid JSON — no preamble, no markdown, no code fences, no explanation outside the JSON.`;
+
+// ================================================================
+// EVALUATION FLOW
+// ================================================================
+async function runEvaluation() {
+  const url         = document.getElementById('input-url').value.trim();
+  const source      = document.getElementById('input-source').value.trim();
+  const description = document.getElementById('input-description').value.trim();
+
+  if (!description) { showToast('Please paste a job description.', 'error'); return; }
+  if (!state.settings.apiKey) {
+    showToast('Add your Anthropic API key in Settings first.', 'error');
+    navigate('settings'); return;
+  }
+
+  document.getElementById('btn-evaluate').disabled = true;
+  showLoading('Evaluating with Claude…');
+
+  try {
+    const userPrompt = `${CANDIDATE_PROFILE}
+
+SCORING INSTRUCTIONS:
+
+personalPrioritiesScore (1–10):
+How well does this role satisfy Ken's requirements for location/remote work, schedule flexibility, compensation, and internal vs. external orientation?
+- 1–4: A hard requirement is clearly violated (e.g., required on-site outside Portland, strict fixed hours, comp clearly under $80K, explicitly customer-facing support role)
+- 5–7: Some requirements met; others unclear or only partially satisfied
+- 8–10: All key requirements clearly satisfied
+
+experienceMatchScore (1–10):
+How well does the role align with Ken's background in IT operations, Microsoft 365/Azure, device management, Python/automation, and project management?
+Score based on direct skills overlap and logical career trajectory.
+
+cultureFitScore (1–10):
+Using your training knowledge of this company, evaluate work-life balance reputation, remote/flexible culture, employee satisfaction, and organizational stability.
+CRITICAL RULES:
+- Only score what you actually know. Do not fabricate ratings, reviews, or details.
+- If you have solid knowledge of this company: score and explain accordingly.
+- If your knowledge is limited or uncertain: assign 5 and explicitly say so in the summary — note that limited public information is available, which may itself be a mild signal about culture transparency.
+- Always state your confidence level in the summary (e.g., "Based on well-documented employee reviews..." vs. "Limited public information available for this company...").
+
+overallScore (1–10):
+Calculate as: Math.round(personalPrioritiesScore * 0.40 + experienceMatchScore * 0.35 + cultureFitScore * 0.25)
+
+overallRecommendation:
+A 2–3 sentence plain-English summary. Be direct. Call out the single most important factor — positive or negative.
+- 8–10: Strong match — worth pursuing
+- 5–7: Partial match — worth considering with caveats
+- Below 5: Poor fit — likely pass
+
+JOB LISTING:
+${description}
+
+Return this exact JSON and nothing else:
+{
+  "jobTitle": "",
+  "company": "",
+  "location": "",
+  "personalPrioritiesScore": 0,
+  "personalPrioritiesSummary": "",
+  "experienceMatchScore": 0,
+  "experienceMatchSummary": "",
+  "cultureFitScore": 0,
+  "cultureFitSummary": "",
+  "overallScore": 0,
+  "overallRecommendation": ""
+}`;
+
+    const raw = await callClaude(EVAL_SYSTEM, userPrompt, 2000);
+    // Strip any accidental markdown fences
+    const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const evaluation = JSON.parse(clean);
+
+    evaluation.id        = crypto.randomUUID();
+    evaluation.timestamp = new Date().toISOString();
+    evaluation.url       = url || null;
+    evaluation.source    = source || null;
+
+    state.pendingEval = evaluation;
+    renderScorecard(evaluation, 'scorecard-content');
+    navigate('scorecard');
+  } catch (e) {
+    showToast('Evaluation failed: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+    document.getElementById('btn-evaluate').disabled = false;
+  }
+}
+
+async function saveEvaluation() {
+  if (!state.pendingEval) return;
+  showLoading('Saving to OneDrive…');
+  try {
+    state.evaluations.unshift(state.pendingEval);
+    await writeOD('evaluations.json', state.evaluations);
+    const saved = state.pendingEval;
+    state.pendingEval = null;
+    // Clear form
+    ['input-url','input-source','input-description'].forEach(id => document.getElementById(id).value = '');
+    showToast('Saved!', 'success');
+    state.currentDetailId = saved.id;
+    renderDetailScorecard(saved);
+    navigate('detail');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function discardEvaluation() {
+  if (!confirm('Discard this evaluation? It won\'t be saved.')) return;
+  state.pendingEval = null;
+  navigate('evaluate');
+}
+
+// ================================================================
+// REPORTS & DIGEST
+// ================================================================
+async function generateDigest() {
+  const filtered = getFilteredEvals();
+  if (filtered.length === 0) { showToast('No evaluations in this time range.', 'error'); return; }
+  if (!state.settings.apiKey) {
+    showToast('Add your Anthropic API key in Settings first.', 'error');
+    navigate('settings'); return;
+  }
+
+  document.getElementById('btn-digest').disabled = true;
+  showLoading('Generating digest…');
+
+  try {
+    const rangeName = getRangeName();
+    const summaries = filtered.map(e => ({
+      date:                 e.timestamp.split('T')[0],
+      jobTitle:             e.jobTitle,
+      company:              e.company,
+      location:             e.location,
+      source:               e.source || null,
+      personalPriorities:   e.personalPrioritiesScore,
+      experienceMatch:      e.experienceMatchScore,
+      cultureFit:           e.cultureFitScore,
+      overall:              e.overallScore,
+      recommendation:       e.overallRecommendation,
+    }));
+
+    const digestPrompt = `You are preparing a job search digest for Ken. Here are his recent job evaluations (${rangeName}).
+
+Write a clear, readable narrative (3–5 paragraphs) covering:
+1. Activity summary: how many jobs, score distribution, any notable patterns
+2. Top opportunities (score 8+): what makes them worth pursuing
+3. Patterns noticed: recurring themes in what's matching well or not (schedule, comp, location, role type, culture)
+4. Any practical observations or next-step suggestions
+
+Write in a direct, helpful tone — this is for Ken's personal review and record-keeping.
+
+EVALUATIONS:
+${JSON.stringify(summaries, null, 2)}`;
+
+    const digest = await callClaude(
+      'You are a career advisor. Write a clear, practical job search narrative in plain prose. No JSON, no bullet headers — just well-organized paragraphs.',
+      digestPrompt,
+      1500
+    );
+
+    state.digestText = digest;
+    const el = document.getElementById('digest-output');
+    el.textContent = digest;
+    el.classList.add('show');
+    document.getElementById('digest-actions').style.display = 'flex';
+  } catch (e) {
+    showToast('Digest failed: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+    document.getElementById('btn-digest').disabled = false;
+  }
+}
+
+async function emailDigest() {
+  if (!state.digestText) return;
+  if (!state.settings.userEmail) {
+    showToast('Add your email address in Settings first.', 'error');
+    navigate('settings'); return;
+  }
+  showLoading('Sending email…');
+  try {
+    const rangeName = getRangeName();
+    const filtered  = getFilteredEvals();
+    const subject   = `JobScout Digest — ${rangeName} (${filtered.length} evaluation${filtered.length !== 1 ? 's' : ''})`;
+    const escaped   = state.digestText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const htmlBody  = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;color:#1e293b;background:#ffffff">
+  <div style="margin-bottom:24px">
+    <span style="font-size:28px;font-weight:800;color:#2563eb;letter-spacing:-0.5px">JobScout</span>
+    <span style="font-size:28px;font-weight:800;letter-spacing:-0.5px"> Digest</span>
+  </div>
+  <div style="font-size:14px;color:#64748b;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #e2e8f0">
+    ${rangeName} &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+    &nbsp;·&nbsp; ${filtered.length} evaluation${filtered.length !== 1 ? 's' : ''}
+  </div>
+  <div style="font-size:15px;line-height:1.75;white-space:pre-wrap">${escaped}</div>
+  <div style="margin-top:36px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
+    Sent by JobScout · ${new Date().toISOString()}
+  </div>
+</div>`;
+    await sendEmailViaGraph(subject, htmlBody);
+    showToast('Digest sent!', 'success');
+  } catch (e) {
+    showToast('Email failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function clearDigest() {
+  state.digestText = null;
+  const el = document.getElementById('digest-output');
+  el.textContent = ''; el.classList.remove('show');
+  document.getElementById('digest-actions').style.display = 'none';
+}
+
+async function deleteCurrentEval() {
+  if (!state.currentDetailId) return;
+  const ev = state.evaluations.find(e => e.id === state.currentDetailId);
+  const label = ev ? `"${ev.jobTitle} at ${ev.company}"` : 'this evaluation';
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  showLoading('Deleting…');
+  try {
+    state.evaluations = state.evaluations.filter(e => e.id !== state.currentDetailId);
+    await writeOD('evaluations.json', state.evaluations);
+    state.currentDetailId = null;
+    showToast('Deleted.', 'success');
+    navigate('history');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+async function saveSettings() {
+  state.settings.apiKey    = document.getElementById('settings-api-key').value.trim();
+  state.settings.userEmail = document.getElementById('settings-email').value.trim();
+  showLoading('Saving settings…');
+  try {
+    await writeOD('settings.json', state.settings);
+    showToast('Settings saved!', 'success');
+    updateSettingsView();
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+function scoreClass(s) { return s >= 8 ? 'high' : s >= 5 ? 'mid' : 'low'; }
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderScorecard(ev, containerId) {
+  const c = scoreClass(ev.overallScore);
+  document.getElementById(containerId).innerHTML = `
+    <div class="sc-header">
+      <div class="score-badge lg ${c}">${ev.overallScore}</div>
+      <div class="sc-meta">
+        <h2>${esc(ev.jobTitle || 'Unknown Role')}</h2>
+        <div class="sc-company">${esc(ev.company || '')}${ev.location ? ' &nbsp;·&nbsp; ' + esc(ev.location) : ''}</div>
+        <div class="sc-date">${fmtDate(ev.timestamp)}${ev.source ? ' &nbsp;·&nbsp; ' + esc(ev.source) : ''}</div>
+      </div>
+    </div>
+    ${ev.url ? `<div class="sc-url">URL: <a href="${esc(ev.url)}" target="_blank" rel="noopener">${esc(ev.url)}</a></div>` : ''}
+    <div class="score-rows">
+      ${scoreRow('Personal Priorities', ev.personalPrioritiesScore, ev.personalPrioritiesSummary)}
+      ${scoreRow('Experience Match',    ev.experienceMatchScore,    ev.experienceMatchSummary)}
+      ${scoreRow('Culture Fit',         ev.cultureFitScore,         ev.cultureFitSummary)}
+    </div>
+    <div class="rec-box">
+      <div class="rec-box-label">Overall Recommendation</div>
+      <p>${esc(ev.overallRecommendation)}</p>
+    </div>
+  `;
+}
+
+function scoreRow(label, score, summary) {
+  const c = scoreClass(score);
+  return `<div class="score-row">
+    <div class="score-badge ${c}">${score}</div>
+    <div class="score-row-body">
+      <div class="score-row-label">${label}</div>
+      <div class="score-row-text">${esc(summary)}</div>
+    </div>
+  </div>`;
+}
+
+function renderDetailScorecard(ev) {
+  renderScorecard(ev, 'detail-content');
+}
+
+let activeScoreMin = 0;
+
+function renderHistoryList() {
+  const list = document.getElementById('history-list');
+  const filtered = state.evaluations.filter(e => e.overallScore >= activeScoreMin);
+  document.getElementById('history-count').textContent =
+    filtered.length + ' evaluation' + (filtered.length !== 1 ? 's' : '');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <h3>${state.evaluations.length === 0 ? 'No evaluations yet' : 'No results for this filter'}</h3>
+      <p>${state.evaluations.length === 0 ? 'Head to Evaluate to score your first job listing.' : 'Try a lower score threshold.'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(ev => {
+    const c = scoreClass(ev.overallScore);
+    return `<div class="history-item" onclick="openDetail('${ev.id}')">
+      <div class="score-badge ${c}">${ev.overallScore}</div>
+      <div class="history-item-body">
+        <div class="history-item-title">${esc(ev.jobTitle || 'Unknown Role')}</div>
+        <div class="history-item-sub">${esc(ev.company || '')}${ev.source ? ' · ' + esc(ev.source) : ''}</div>
+      </div>
+      <div class="history-item-date">${fmtDate(ev.timestamp)}</div>
+    </div>`;
+  }).join('');
+}
+
+function openDetail(id) {
+  const ev = state.evaluations.find(e => e.id === id);
+  if (!ev) return;
+  state.currentDetailId = id;
+  renderDetailScorecard(ev);
+  navigate('detail');
+}
+
+function setScoreFilter(btn, min) {
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeScoreMin = min;
+  renderHistoryList();
+}
+
+function renderReportStats() {
+  const filtered = getFilteredEvals();
+  const el = document.getElementById('report-stats');
+  if (filtered.length === 0) {
+    el.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;font-size:14px">No evaluations in this time range.</div>`;
+    return;
+  }
+  const avg    = filtered.reduce((s, e) => s + e.overallScore, 0) / filtered.length;
+  const strong = filtered.filter(e => e.overallScore >= 8).length;
+  el.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${filtered.length}</div><div class="stat-label">Evaluated</div></div>
+    <div class="stat-card"><div class="stat-value">${avg.toFixed(1)}</div><div class="stat-label">Avg Score</div></div>
+    <div class="stat-card"><div class="stat-value">${strong}</div><div class="stat-label">Strong (8+)</div></div>
+  `;
+}
+
+function getFilteredEvals() {
+  if (state.reportRange === 0) return state.evaluations;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - state.reportRange);
+  return state.evaluations.filter(e => new Date(e.timestamp) >= cutoff);
+}
+
+function getRangeName() {
+  const map = { 0: 'All Time', 3: 'Last 3 Days', 7: 'This Week', 30: 'This Month' };
+  return map[state.reportRange] || 'Selected Range';
+}
+
+function setRange(btn, days) {
+  document.querySelectorAll('.range-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.reportRange = days;
+  clearDigest();
+  renderReportStats();
+}
+
+function updateSettingsView() {
+  document.getElementById('settings-api-key').value  = state.settings.apiKey || '';
+  document.getElementById('settings-email').value    = state.settings.userEmail || '';
+  const msEl = document.getElementById('settings-ms-status');
+  msEl.innerHTML = state.account
+    ? `<span class="status-dot green"></span>${esc(state.account.username)}`
+    : `<span class="status-dot red"></span>Not signed in`;
+}
+
+function updateODStatus() {
+  const el = document.getElementById('settings-od-status');
+  if (el) el.innerHTML = state.oneDriveReady
+    ? `<span class="status-dot green"></span>Connected`
+    : `<span class="status-dot red"></span>Not connected`;
+}
+
+function navigate(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  // Update nav (scorecard and detail don't have nav buttons)
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  if (view === 'history')  renderHistoryList();
+  if (view === 'reports')  renderReportStats();
+  if (view === 'settings') updateSettingsView();
+  window.scrollTo(0, 0);
+}
+
+function showLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg || 'Loading…';
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// INIT
+// ================================================================
+async function onAuthenticated() {
+  document.getElementById('header-user').textContent = state.account?.username || '';
+  showLoading('Loading your data…');
+  try {
+    await loadFromOneDrive();
+    hideLoading();
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    if (!state.settings.apiKey) {
+      navigate('settings');
+      showToast('Welcome! Add your API key in Settings to get started.', '');
+    } else {
+      navigate('evaluate');
+    }
+  } catch (e) {
+    hideLoading();
+    showToast('Failed to load data: ' + e.message, 'error');
+  }
+}
+
+async function init() {
+  await msalInstance.initialize();
+
+  // Handle redirect flow (fallback on mobile if popup is blocked)
+  const redirectResult = await msalInstance.handleRedirectPromise();
+  if (redirectResult) {
+    state.account = redirectResult.account;
+    await onAuthenticated();
+    return;
+  }
+
+  // Restore existing session
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    state.account = accounts[0];
+    await onAuthenticated();
+  }
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+
+init();
+</script>
+</body>
+</html>
