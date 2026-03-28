@@ -1202,26 +1202,29 @@ async function onAuthenticated() {
 }
 
 async function init() {
-  await msalInstance.initialize();
+  try {
+    await msalInstance.initialize();
 
-  // Handle redirect flow (fallback on mobile if popup is blocked)
-  const redirectResult = await msalInstance.handleRedirectPromise();
-  if (redirectResult) {
-    state.account = redirectResult.account;
-    await onAuthenticated();
-    return;
+    // Handle redirect flow (fallback on mobile if popup is blocked)
+    const redirectResult = await msalInstance.handleRedirectPromise();
+    if (redirectResult) {
+      state.account = redirectResult.account;
+      await onAuthenticated();
+      return;
+    }
+
+    // Restore existing session
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      state.account = accounts[0];
+      await onAuthenticated();
+      return;
+    }
+  } finally {
+    // Always enable the button — if auth succeeded the login screen is
+    // hidden anyway; if anything failed the user must be able to retry
+    document.querySelector('.btn-ms').disabled = false;
   }
-
-  // Restore existing session
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    state.account = accounts[0];
-    await onAuthenticated();
-    return;
-  }
-
-  // No existing session — user needs to sign in manually
-  document.querySelector('.btn-ms').disabled = false;
 }
 
 // Register service worker and reload automatically when a new version activates
