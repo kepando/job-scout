@@ -538,7 +538,7 @@
 </div><!-- #app -->
 
 <!-- MSAL -->
-<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+<script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 
 <script>
 // ================================================================
@@ -594,7 +594,6 @@ let msalInstance = new msal.PublicClientApplication({
 
 async function signIn() {
   try {
-    await initPromise; // ensure msalInstance.initialize() has completed
     showLoading('Signing in...');
     // Mobile browsers block popups; use redirect flow instead
     if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
@@ -1203,8 +1202,6 @@ async function onAuthenticated() {
 
 async function init() {
   try {
-    await msalInstance.initialize();
-
     // Handle redirect flow (fallback on mobile if popup is blocked)
     const redirectResult = await msalInstance.handleRedirectPromise();
     if (redirectResult) {
