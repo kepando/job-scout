@@ -1203,7 +1203,6 @@ async function onAuthenticated() {
 
 async function init() {
   await msalInstance.initialize();
-  document.querySelector('.btn-ms').disabled = false;
 
   // Handle redirect flow (fallback on mobile if popup is blocked)
   const redirectResult = await msalInstance.handleRedirectPromise();
@@ -1218,12 +1217,19 @@ async function init() {
   if (accounts.length > 0) {
     state.account = accounts[0];
     await onAuthenticated();
+    return;
   }
+
+  // No existing session — user needs to sign in manually
+  document.querySelector('.btn-ms').disabled = false;
 }
 
-// Register service worker
+// Register service worker and reload automatically when a new version activates
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data === 'SW_UPDATED') location.reload();
+  });
 }
 
 initPromise = init().catch(e => {
