@@ -596,14 +596,24 @@ let msalInstance = new msal.PublicClientApplication({
 async function signIn() {
   try {
     showLoading('Signing in...');
-    // Mobile browsers block popups; use redirect flow instead
-    if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    // Use redirect flow on mobile, or if popup is blocked/nested
+    const useRedirect = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (useRedirect) {
       await msalInstance.loginRedirect({ scopes: CONFIG.scopes });
       return; // page reloads after redirect; result handled in init()
     }
-    const result = await msalInstance.loginPopup({ scopes: CONFIG.scopes });
-    state.account = result.account;
-    await onAuthenticated();
+    try {
+      const result = await msalInstance.loginPopup({ scopes: CONFIG.scopes });
+      state.account = result.account;
+      await onAuthenticated();
+    } catch (popupErr) {
+      // If popup was blocked or nested, fall back to redirect flow
+      if (popupErr.errorCode === 'block_nested_popups' || /popup/i.test(popupErr.message || '')) {
+        await msalInstance.loginRedirect({ scopes: CONFIG.scopes });
+      } else {
+        throw popupErr;
+      }
+    }
   } catch (e) {
     hideLoading();
     showToast('Sign-in failed: ' + (e.message || e), 'error');
