@@ -1235,6 +1235,7 @@ if ('serviceWorker' in navigator) {
 initPromise = init().catch(e => {
   showToast('Sign-in unavailable. Pull down to refresh.', 'error');
   console.error('init failed:', e);
+  document.querySelector('.btn-ms').disabled = false;
 });
 
 // Pull-to-refresh
