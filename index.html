@@ -62,7 +62,7 @@
     /* ── Toast ── */
     #toast {
       position: fixed;
-      bottom: calc(var(--nav-height) + 16px + var(--safe-bottom));
+      bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 40px);
       left: 50%; transform: translateX(-50%) translateY(8px);
       background: var(--text); color: white;
       padding: 10px 20px; border-radius: 20px;
@@ -138,27 +138,31 @@
     /* ── Views ── */
     .view {
       display: none;
-      padding: calc(var(--header-height) + var(--safe-top) + 20px) 16px calc(var(--nav-height) + var(--safe-bottom) + 20px);
+      padding: calc(var(--header-height) + var(--safe-top) + 20px) 16px calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 32px);
       min-height: 100vh;
     }
     .view.active { display: block; }
     .view-inner { max-width: 640px; margin: 0 auto; }
     .view-title { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 18px; }
 
-    /* ── Bottom nav ── */
+    /* ── Bottom nav — floating pill ── */
     #bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
-      height: calc(var(--nav-height) + var(--safe-bottom));
-      padding-bottom: var(--safe-bottom);
-      background: white; border-top: 1px solid var(--border);
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+      left: 16px; right: 16px; z-index: 50;
+      background: white;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
       display: flex; align-items: stretch;
+      padding: 6px 0;
     }
     .nav-btn {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 3px;
       border: none; background: none; cursor: pointer;
       color: var(--text-muted); font-size: 11px; font-weight: 500;
-      transition: color 0.15s; padding: 0 4px var(--safe-bottom);
+      transition: color 0.15s; padding: 8px 4px;
     }
     .nav-btn.active { color: var(--primary); }
     .nav-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
@@ -345,9 +349,10 @@
       #bottom-nav {
         position: fixed; top: 0; left: 0; bottom: 0; right: auto; width: 230px;
         height: 100%; flex-direction: column; border-top: none;
-        border-right: 1px solid var(--border); padding: calc(var(--header-height) + 24px) 12px 24px;
+        border-right: 1px solid var(--border);
+        border-radius: 0; box-shadow: none;
+        padding: calc(var(--header-height) + 24px) 12px 24px;
         align-items: stretch; justify-content: flex-start; gap: 2px;
-        padding-bottom: var(--safe-bottom);
       }
       .nav-btn {
         flex-direction: row; justify-content: flex-start;
