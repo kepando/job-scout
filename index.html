@@ -315,6 +315,30 @@
       .view { padding-left: 24px; padding-right: 24px; }
     }
 
+    /* ── Profile ── */
+    .profile-header { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+    .profile-avatar { width:56px; height:56px; border-radius:14px; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:white; flex-shrink:0; }
+    .profile-header-meta h2 { font-size:20px; font-weight:800; letter-spacing:-.3px; }
+    .profile-header-meta p { font-size:14px; color:var(--text-muted); margin-top:2px; }
+    .profile-section { margin-bottom:22px; }
+    .profile-section-title { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; padding:0 4px; }
+    .profile-field { background:white; border-radius:12px; padding:13px 16px; margin-bottom:4px; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+    .profile-field-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+    .profile-field-value { font-size:14px; line-height:1.6; color:var(--text); }
+    .context-item { display:flex; align-items:flex-start; gap:10px; background:white; border-radius:10px; padding:12px 14px; margin-bottom:6px; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+    .context-item-body { flex:1; min-width:0; }
+    .context-item-text { font-size:14px; line-height:1.5; color:var(--text); }
+    .context-item-date { font-size:11px; color:var(--text-muted); margin-top:3px; }
+    .context-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; line-height:1; padding:0 2px; flex-shrink:0; }
+    .context-del:hover { color:var(--low); }
+
+    /* ── Feedback ── */
+    .feedback-box { background:#f8fafc; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-top:14px; }
+    .feedback-box-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
+    .feedback-box textarea { min-height:80px; font-size:14px; }
+    .feedback-notes { margin-bottom:10px; }
+    .feedback-note { font-size:13px; color:var(--text-muted); padding:8px 12px; background:white; border-radius:8px; margin-bottom:4px; line-height:1.5; border:1px solid var(--border); }
+
     /* ── Responsive: desktop ── */
     @media (min-width: 900px) {
       #bottom-nav {
@@ -433,7 +457,12 @@
         ✦ Evaluation complete — review and save below.
       </div>
       <div id="scorecard-content"></div>
-      <div class="btn-row" style="margin-top:4px">
+      <div class="feedback-box">
+        <div class="feedback-box-label">Add a correction to your profile</div>
+        <textarea id="scorecard-feedback" placeholder="e.g. I actually do have vendor management experience from my time at..."></textarea>
+        <button class="btn btn-secondary" style="margin-top:8px;font-size:13px;padding:9px 14px;width:auto" onclick="addFeedbackToProfile('scorecard-feedback')">Add to My Profile</button>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
         <button class="btn btn-primary" onclick="saveEvaluation()">Save to OneDrive</button>
         <button class="btn btn-secondary" onclick="discardEvaluation()">Discard</button>
       </div>
@@ -465,8 +494,107 @@
         Back
       </button>
       <div id="detail-content"></div>
+      <div class="feedback-box">
+        <div class="feedback-box-label">Add a correction to your profile</div>
+        <div id="detail-feedback-notes" class="feedback-notes"></div>
+        <textarea id="detail-feedback" placeholder="e.g. I actually do have vendor management experience from my time at..."></textarea>
+        <button class="btn btn-secondary" style="margin-top:8px;font-size:13px;padding:9px 14px;width:auto" onclick="addFeedbackToProfile('detail-feedback')">Add to My Profile</button>
+      </div>
       <div class="divider"></div>
       <button class="btn btn-danger" onclick="deleteCurrentEval()">Delete This Evaluation</button>
+    </div>
+  </div>
+
+  <!-- Profile -->
+  <div id="view-profile" class="view">
+    <div class="view-inner">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div class="view-title" style="margin:0">My Profile</div>
+        <button class="btn btn-secondary btn-sm" id="btn-edit-profile" onclick="toggleProfileEdit()">Edit</button>
+      </div>
+
+      <!-- View mode -->
+      <div id="profile-view-mode">
+        <div class="profile-header">
+          <div class="profile-avatar" id="pv-initials">K</div>
+          <div class="profile-header-meta">
+            <h2 id="pv-name"></h2>
+            <p id="pv-role"></p>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Experience &amp; Skills</div>
+          <div class="profile-field"><div class="profile-field-label">Skills</div><div class="profile-field-value" id="pv-skills"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Responsibilities</div><div class="profile-field-value" id="pv-responsibilities"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Currently Building</div><div class="profile-field-value" id="pv-projects"></div></div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Location &amp; Schedule</div>
+          <div class="profile-field"><div class="profile-field-label">Location</div><div class="profile-field-value" id="pv-location"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Remote Rule</div><div class="profile-field-value" id="pv-location-rule"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Schedule Needs</div><div class="profile-field-value" id="pv-schedule"></div></div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Compensation</div>
+          <div class="profile-field"><div class="profile-field-label">Minimum</div><div class="profile-field-value" id="pv-comp-min"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Preferred</div><div class="profile-field-value" id="pv-comp-pref"></div></div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Career Preferences</div>
+          <div class="profile-field"><div class="profile-field-label">Work Orientation</div><div class="profile-field-value" id="pv-career-pref"></div></div>
+          <div class="profile-field"><div class="profile-field-label">Role Type</div><div class="profile-field-value" id="pv-role-type"></div></div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Additional Context <span style="font-weight:500;text-transform:none;letter-spacing:0;font-size:11px">(corrections from evaluations)</span></div>
+          <div id="pv-context-list"></div>
+          <div id="pv-context-empty" class="empty-state" style="padding:20px 0;display:none">
+            <p>No corrections added yet. Use the feedback field on any evaluation to add context.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit mode -->
+      <div id="profile-edit-mode" style="display:none">
+        <div class="profile-section">
+          <div class="profile-section-title">Overview</div>
+          <div class="card">
+            <div class="form-group"><label>Name</label><input type="text" id="pe-name"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Current Role</label><input type="text" id="pe-role"></div>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Experience &amp; Skills</div>
+          <div class="card">
+            <div class="form-group"><label>Skills <span style="font-weight:400;text-transform:none">(comma-separated)</span></label><textarea id="pe-skills" style="min-height:80px"></textarea></div>
+            <div class="form-group"><label>Responsibilities</label><textarea id="pe-responsibilities" style="min-height:80px"></textarea></div>
+            <div class="form-group" style="margin-bottom:0"><label>Currently Building</label><textarea id="pe-projects" style="min-height:60px"></textarea></div>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Location &amp; Schedule</div>
+          <div class="card">
+            <div class="form-group"><label>Location</label><input type="text" id="pe-location"></div>
+            <div class="form-group"><label>Remote Rule</label><textarea id="pe-location-rule" style="min-height:60px"></textarea></div>
+            <div class="form-group" style="margin-bottom:0"><label>Schedule Needs</label><textarea id="pe-schedule" style="min-height:60px"></textarea></div>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Compensation</div>
+          <div class="card">
+            <div class="form-group"><label>Minimum</label><input type="text" id="pe-comp-min" placeholder="e.g. $100,000/year"></div>
+            <div class="form-group" style="margin-bottom:0"><label>Preferred</label><input type="text" id="pe-comp-pref" placeholder="e.g. $115,000+/year"></div>
+          </div>
+        </div>
+        <div class="profile-section">
+          <div class="profile-section-title">Career Preferences</div>
+          <div class="card">
+            <div class="form-group"><label>Work Orientation</label><textarea id="pe-career-pref" style="min-height:60px"></textarea></div>
+            <div class="form-group" style="margin-bottom:0"><label>Role Type</label><input type="text" id="pe-role-type"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()" style="margin-bottom:10px">Save Profile</button>
+        <button class="btn btn-secondary" onclick="cancelProfileEdit()">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -559,6 +687,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Reports
     </button>
+    <button class="nav-btn" data-view="profile" onclick="navigate('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
     <button class="nav-btn" data-view="settings" onclick="navigate('settings')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
@@ -599,10 +731,27 @@ let initPromise;
 // ================================================================
 // STATE
 // ================================================================
+const DEFAULT_PROFILE = {
+  name:             'Ken',
+  currentRole:      'IT Operations Manager',
+  responsibilities: 'Technology projects, tech support, device management, Microsoft 365 administration',
+  skills:           'IT infrastructure, device management, Microsoft 365 administration, Azure Entra ID, Python development, process automation, project management',
+  currentProjects:  'Python-based email assistant integrated with Microsoft 365 via Azure Entra',
+  careerPreference: 'Internal-facing IT operations (supporting employees and internal teams) — not external customer-facing technical support',
+  roleType:         'Individual contributor preferred; people manager roles acceptable but not required',
+  location:         'Portland, OR metro area',
+  locationRule:     'Roles outside Portland must be fully remote. Roles in Portland: remote or hybrid acceptable depending on commute.',
+  scheduleNeeds:    'Must not require fixed start/end times — flexibility needed for family (school drop-off/pickup, children\'s activities, early mornings, evenings)',
+  compensationMin:  '$100,000/year',
+  compensationPref: '$115,000+/year',
+  additionalContext: [],
+};
+
 const state = {
   account:         null,
   evaluations:     [],
   settings:        { apiKey: '', userEmail: '' },
+  profile:         { ...DEFAULT_PROFILE },
   pendingEval:     null,
   currentDetailId: null,
   reportRange:     3,
@@ -721,12 +870,14 @@ async function writeOD(filename, data) {
 }
 
 async function loadFromOneDrive() {
-  const [evals, settings] = await Promise.all([
+  const [evals, settings, profile] = await Promise.all([
     readOD('evaluations.json'),
     readOD('settings.json'),
+    readOD('profile.json'),
   ]);
   state.evaluations = Array.isArray(evals) ? evals : [];
   if (settings && typeof settings === 'object') state.settings = settings;
+  if (profile  && typeof profile  === 'object') state.profile  = { ...DEFAULT_PROFILE, ...profile };
   state.oneDriveReady = true;
   updateODStatus();
 }
@@ -772,24 +923,32 @@ async function callClaude(system, user, maxTokens = 2000) {
 }
 
 // ── Candidate profile baked into every evaluation ──
-const CANDIDATE_PROFILE = `CANDIDATE PROFILE:
-- Name: Ken
-- Current Role: IT Operations Manager
-- Core Skills: IT infrastructure, device management, Microsoft 365 administration, Azure Entra ID, Python development, process automation, project management
-- Currently Building: Python-based email assistant integrated with Microsoft 365 via Azure Entra
-- Career Preference: Internal-facing IT operations (supporting employees and internal teams) — NOT external customer-facing technical support
-- Role Type: Individual contributor preferred; people manager roles acceptable but not required
+function buildCandidateProfile() {
+  const p = state.profile;
+  let text = `CANDIDATE PROFILE:
+- Name: ${p.name}
+- Current Role: ${p.currentRole}
+- Core Responsibilities: ${p.responsibilities}
+- Skills: ${p.skills}
+- Currently Building: ${p.currentProjects}
+- Career Preference: ${p.careerPreference}
+- Role Type: ${p.roleType}
 
 LOCATION & SCHEDULE REQUIREMENTS:
-- Based in: Portland, OR metro area
-- If role is outside Portland: must be FULLY REMOTE — no exceptions
-- If role is in Portland: remote or hybrid acceptable (depends on commute reasonableness)
-- Schedule: Must NOT require fixed start/end times — flexibility is essential for family (school drop-off/pickup, children's activities, early mornings, evenings)
+- Based in: ${p.location}
+- Location Rule: ${p.locationRule}
+- Schedule: ${p.scheduleNeeds}
 
 COMPENSATION:
-- Minimum: $100,000/year
-- Preferred: $115,000+
+- Minimum: ${p.compensationMin}
+- Preferred: ${p.compensationPref}
 - If compensation is not listed, note this in the summary and score conservatively`;
+  if (p.additionalContext && p.additionalContext.length > 0) {
+    text += `\n\nADDITIONAL CONTEXT (corrections and clarifications — treat these as facts):\n`;
+    text += p.additionalContext.map(c => `- ${c.text}`).join('\n');
+  }
+  return text;
+}
 
 const EVAL_SYSTEM = `You are a career advisor evaluating job listings for a specific person. Analyze the job listing carefully and return a structured JSON evaluation. Be honest and specific. Do not invent information you do not have. Return ONLY valid JSON — no preamble, no markdown, no code fences, no explanation outside the JSON.`;
 
@@ -928,7 +1087,7 @@ async function runEvaluation() {
        scheduling === 'On-site' ? 'On-site outside Portland is a hard fail on personalPriorities. On-site in Portland may be acceptable depending on commute.' : '')
       : '';
 
-    const userPrompt = `${CANDIDATE_PROFILE}
+    const userPrompt = `${buildCandidateProfile()}
 
 USER-PROVIDED JOB DETAILS (treat these as confirmed facts; do not contradict them):
 ${knownDetails}
@@ -1030,6 +1189,7 @@ async function saveEvaluation() {
 function discardEvaluation() {
   if (!confirm('Discard this evaluation? It won\'t be saved.')) return;
   state.pendingEval = null;
+  document.getElementById('scorecard-feedback').value = '';
   navigate('evaluate');
 }
 
@@ -1310,6 +1470,150 @@ function updateODStatus() {
     : `<span class="status-dot red"></span>Not connected`;
 }
 
+// ================================================================
+// PROFILE
+// ================================================================
+function renderProfileView() {
+  const p = state.profile;
+  document.getElementById('pv-name').textContent         = p.name;
+  document.getElementById('pv-role').textContent         = p.currentRole;
+  document.getElementById('pv-initials').textContent     = (p.name || 'K')[0].toUpperCase();
+  document.getElementById('pv-skills').textContent       = p.skills;
+  document.getElementById('pv-responsibilities').textContent = p.responsibilities;
+  document.getElementById('pv-projects').textContent     = p.currentProjects;
+  document.getElementById('pv-location').textContent     = p.location;
+  document.getElementById('pv-location-rule').textContent = p.locationRule;
+  document.getElementById('pv-schedule').textContent     = p.scheduleNeeds;
+  document.getElementById('pv-comp-min').textContent     = p.compensationMin;
+  document.getElementById('pv-comp-pref').textContent    = p.compensationPref;
+  document.getElementById('pv-career-pref').textContent  = p.careerPreference;
+  document.getElementById('pv-role-type').textContent    = p.roleType;
+
+  const ctx = p.additionalContext || [];
+  const list = document.getElementById('pv-context-list');
+  const empty = document.getElementById('pv-context-empty');
+  if (ctx.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = '';
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = ctx.map((c, i) => `
+      <div class="context-item">
+        <div class="context-item-body">
+          <div class="context-item-text">${esc(c.text)}</div>
+          <div class="context-item-date">${fmtDate(c.date)}</div>
+        </div>
+        <button class="context-del" onclick="deleteContextItem(${i})" title="Remove">×</button>
+      </div>`).join('');
+  }
+}
+
+function toggleProfileEdit() {
+  const editing = document.getElementById('profile-edit-mode').style.display !== 'none';
+  if (editing) {
+    cancelProfileEdit();
+  } else {
+    const p = state.profile;
+    document.getElementById('pe-name').value          = p.name;
+    document.getElementById('pe-role').value          = p.currentRole;
+    document.getElementById('pe-skills').value        = p.skills;
+    document.getElementById('pe-responsibilities').value = p.responsibilities;
+    document.getElementById('pe-projects').value      = p.currentProjects;
+    document.getElementById('pe-location').value      = p.location;
+    document.getElementById('pe-location-rule').value = p.locationRule;
+    document.getElementById('pe-schedule').value      = p.scheduleNeeds;
+    document.getElementById('pe-comp-min').value      = p.compensationMin;
+    document.getElementById('pe-comp-pref').value     = p.compensationPref;
+    document.getElementById('pe-career-pref').value   = p.careerPreference;
+    document.getElementById('pe-role-type').value     = p.roleType;
+    document.getElementById('profile-view-mode').style.display = 'none';
+    document.getElementById('profile-edit-mode').style.display = '';
+    document.getElementById('btn-edit-profile').textContent = 'Cancel';
+  }
+}
+
+function cancelProfileEdit() {
+  document.getElementById('profile-view-mode').style.display = '';
+  document.getElementById('profile-edit-mode').style.display = 'none';
+  document.getElementById('btn-edit-profile').textContent = 'Edit';
+}
+
+async function saveProfile() {
+  state.profile.name             = document.getElementById('pe-name').value.trim();
+  state.profile.currentRole      = document.getElementById('pe-role').value.trim();
+  state.profile.skills           = document.getElementById('pe-skills').value.trim();
+  state.profile.responsibilities = document.getElementById('pe-responsibilities').value.trim();
+  state.profile.currentProjects  = document.getElementById('pe-projects').value.trim();
+  state.profile.location         = document.getElementById('pe-location').value.trim();
+  state.profile.locationRule     = document.getElementById('pe-location-rule').value.trim();
+  state.profile.scheduleNeeds    = document.getElementById('pe-schedule').value.trim();
+  state.profile.compensationMin  = document.getElementById('pe-comp-min').value.trim();
+  state.profile.compensationPref = document.getElementById('pe-comp-pref').value.trim();
+  state.profile.careerPreference = document.getElementById('pe-career-pref').value.trim();
+  state.profile.roleType         = document.getElementById('pe-role-type').value.trim();
+
+  showLoading('Saving profile…');
+  try {
+    await writeOD('profile.json', state.profile);
+    cancelProfileEdit();
+    renderProfileView();
+    showToast('Profile saved!', 'success');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+async function deleteContextItem(index) {
+  if (!confirm('Remove this correction from your profile?')) return;
+  state.profile.additionalContext.splice(index, 1);
+  showLoading('Saving…');
+  try {
+    await writeOD('profile.json', state.profile);
+    renderProfileView();
+    showToast('Removed.', 'success');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+async function addFeedbackToProfile(textareaId) {
+  const text = document.getElementById(textareaId).value.trim();
+  if (!text) { showToast('Enter a correction first.', 'error'); return; }
+
+  if (!state.profile.additionalContext) state.profile.additionalContext = [];
+  state.profile.additionalContext.push({ text, date: new Date().toISOString() });
+
+  showLoading('Adding to profile…');
+  try {
+    await writeOD('profile.json', state.profile);
+    document.getElementById(textareaId).value = '';
+
+    // If on detail view, refresh the notes display
+    if (textareaId === 'detail-feedback') renderDetailFeedbackNotes();
+
+    showToast('Added to your profile — future evaluations will reflect this.', 'success');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function renderDetailFeedbackNotes() {
+  const ev = state.evaluations.find(e => e.id === state.currentDetailId);
+  const notesEl = document.getElementById('detail-feedback-notes');
+  if (!notesEl) return;
+  // Show corrections that were added on or after this evaluation's timestamp
+  // (approximate — shows recently added profile context as a reminder)
+  const ctx = state.profile.additionalContext || [];
+  if (ctx.length === 0) { notesEl.innerHTML = ''; return; }
+  // Show the 3 most recent context items as a reference
+  const recent = ctx.slice(-3).reverse();
+  notesEl.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Recent profile corrections</div>' +
+    recent.map(c => `<div class="feedback-note">${esc(c.text)}</div>`).join('');
+}
+
+// ================================================================
+// NAVIGATION
+// ================================================================
 function navigate(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
@@ -1320,6 +1624,8 @@ function navigate(view) {
   if (view === 'history')  renderHistoryList();
   if (view === 'reports')  renderReportStats();
   if (view === 'settings') updateSettingsView();
+  if (view === 'profile')  renderProfileView();
+  if (view === 'detail')   renderDetailFeedbackNotes();
   window.scrollTo(0, 0);
 }
 
