@@ -403,7 +403,10 @@
       </div>
       <div class="form-group">
         <label>Job Listing URL <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
-        <input type="text" id="input-url" placeholder="https://..." autocomplete="off" spellcheck="false">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="input-url" placeholder="https://..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
+          <button class="btn btn-secondary" id="btn-fetch" onclick="fetchFromUrl()" style="flex-shrink:0;width:auto;padding:12px 16px;font-size:14px">Fetch</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Source <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
@@ -413,10 +416,13 @@
         <label>Job Description *</label>
         <textarea id="input-description" placeholder="Paste the full job description here — title, company, responsibilities, requirements, location, and compensation if listed. The more detail, the better the evaluation."></textarea>
       </div>
-      <button class="btn btn-primary" id="btn-evaluate" onclick="runEvaluation()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Evaluate
-      </button>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-evaluate" onclick="runEvaluation()" style="flex:2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Evaluate
+        </button>
+        <button class="btn btn-secondary" onclick="clearEvalForm()">Clear All</button>
+      </div>
     </div>
   </div>
 
@@ -786,6 +792,104 @@ COMPENSATION:
 - If compensation is not listed, note this in the summary and score conservatively`;
 
 const EVAL_SYSTEM = `You are a career advisor evaluating job listings for a specific person. Analyze the job listing carefully and return a structured JSON evaluation. Be honest and specific. Do not invent information you do not have. Return ONLY valid JSON — no preamble, no markdown, no code fences, no explanation outside the JSON.`;
+
+// ================================================================
+// FETCH & PRE-POPULATE FROM URL
+// ================================================================
+async function fetchFromUrl() {
+  const url = document.getElementById('input-url').value.trim();
+  if (!url) { showToast('Paste a URL first.', 'error'); return; }
+  if (!state.settings.apiKey) {
+    showToast('Add your API key in Settings first.', 'error');
+    navigate('settings'); return;
+  }
+
+  const btn = document.getElementById('btn-fetch');
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  try {
+    // Try two CORS proxies in sequence
+    const proxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    ];
+
+    let pageText = null;
+    for (const proxyUrl of proxies) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 9000);
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) continue;
+        const html = await res.text();
+        // Parse HTML safely and extract readable text
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('script,style,nav,footer,header,noscript,iframe,aside').forEach(el => el.remove());
+        const text = (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text.length > 300) { pageText = text; break; }
+      } catch { continue; }
+    }
+
+    if (!pageText) {
+      showToast("Couldn't fetch this URL — paste the description manually.", 'error');
+      return;
+    }
+
+    showLoading('Extracting job details…');
+
+    const extractPrompt = `Extract structured fields from the job listing page content below.
+
+PAGE CONTENT (truncated):
+${pageText.slice(0, 8000)}
+
+Return ONLY this JSON — no markdown, no explanation:
+{
+  "jobTitle": "",
+  "company": "",
+  "location": "",
+  "scheduling": "",
+  "description": ""
+}
+
+Rules:
+- jobTitle: the job title / position name
+- company: the hiring company name
+- location: city and state, e.g. "Portland, OR" or "Austin, TX"; if fully remote with no office, use "Remote"
+- scheduling: exactly one of "Remote", "Hybrid", "On-site", or "" if genuinely unclear
+- description: the complete job description — responsibilities, requirements, qualifications, compensation if listed. Include as much detail as possible. Plain text only.`;
+
+    const raw = await callClaude(
+      'You extract structured data from job listing pages. Return only valid JSON with no preamble or markdown.',
+      extractPrompt,
+      2000
+    );
+
+    const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const fields = JSON.parse(clean);
+
+    if (fields.company)     document.getElementById('input-company').value     = fields.company;
+    if (fields.jobTitle)    document.getElementById('input-title').value        = fields.jobTitle;
+    if (fields.location)    document.getElementById('input-location').value     = fields.location;
+    if (fields.scheduling)  document.getElementById('input-scheduling').value   = fields.scheduling;
+    if (fields.description) document.getElementById('input-description').value  = fields.description;
+
+    showToast('Fields pre-filled — review before evaluating.', 'success');
+  } catch (e) {
+    showToast('Fetch failed: ' + (e.message || e), 'error');
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.textContent = 'Fetch';
+  }
+}
+
+function clearEvalForm() {
+  ['input-company','input-title','input-location','input-url','input-source','input-description']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('input-scheduling').value = '';
+}
 
 // ================================================================
 // EVALUATION FLOW
