@@ -378,6 +378,29 @@
   <div id="view-evaluate" class="view active">
     <div class="view-inner">
       <div class="view-title">Evaluate a Job</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="form-group">
+          <label>Company <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input type="text" id="input-company" placeholder="Acme Corp" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Title <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input type="text" id="input-title" placeholder="IT Manager" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Location <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input type="text" id="input-location" placeholder="Portland, OR" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Scheduling</label>
+          <select id="input-scheduling">
+            <option value="">Not specified</option>
+            <option value="Remote">Remote</option>
+            <option value="Hybrid">Hybrid</option>
+            <option value="On-site">On-site</option>
+          </select>
+        </div>
+      </div>
       <div class="form-group">
         <label>Job Listing URL <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
         <input type="text" id="input-url" placeholder="https://..." autocomplete="off" spellcheck="false">
@@ -768,6 +791,10 @@ const EVAL_SYSTEM = `You are a career advisor evaluating job listings for a spec
 // EVALUATION FLOW
 // ================================================================
 async function runEvaluation() {
+  const company     = document.getElementById('input-company').value.trim();
+  const title       = document.getElementById('input-title').value.trim();
+  const location    = document.getElementById('input-location').value.trim();
+  const scheduling  = document.getElementById('input-scheduling').value;
   const url         = document.getElementById('input-url').value.trim();
   const source      = document.getElementById('input-source').value.trim();
   const description = document.getElementById('input-description').value.trim();
@@ -782,12 +809,31 @@ async function runEvaluation() {
   showLoading('Evaluating with Claude…');
 
   try {
+    // Build known-details block from user-provided fields
+    const knownDetails = [
+      title      ? `- Job Title: ${title}`           : '- Job Title: extract from listing',
+      company    ? `- Company: ${company}`            : '- Company: extract from listing',
+      location   ? `- Location: ${location}`          : '- Location: extract from listing',
+      scheduling ? `- Work Schedule: ${scheduling}`   : '- Work Schedule: determine from listing',
+    ].join('\n');
+
+    // Scheduling guidance for scoring
+    const schedulingNote = scheduling ? `The user has confirmed this role is ${scheduling}. ` +
+      (scheduling === 'Remote'  ? 'This satisfies the location requirement regardless of geography — do not penalize on location.' :
+       scheduling === 'Hybrid'  ? 'Factor in the listed location: hybrid in Portland is acceptable; hybrid outside Portland is a hard fail.' :
+       scheduling === 'On-site' ? 'On-site outside Portland is a hard fail on personalPriorities. On-site in Portland may be acceptable depending on commute.' : '')
+      : '';
+
     const userPrompt = `${CANDIDATE_PROFILE}
+
+USER-PROVIDED JOB DETAILS (treat these as confirmed facts; do not contradict them):
+${knownDetails}
 
 SCORING INSTRUCTIONS:
 
 personalPrioritiesScore (1–10):
 How well does this role satisfy Ken's requirements for location/remote work, schedule flexibility, compensation, and internal vs. external orientation?
+${schedulingNote}
 - 1–4: A hard requirement is clearly violated (e.g., required on-site outside Portland, strict fixed hours, comp clearly under $80K, explicitly customer-facing support role)
 - 5–7: Some requirements met; others unclear or only partially satisfied
 - 8–10: All key requirements clearly satisfied
@@ -832,14 +878,19 @@ Return this exact JSON and nothing else:
 }`;
 
     const raw = await callClaude(EVAL_SYSTEM, userPrompt, 2000);
-    // Strip any accidental markdown fences
     const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     const evaluation = JSON.parse(clean);
 
-    evaluation.id        = crypto.randomUUID();
-    evaluation.timestamp = new Date().toISOString();
-    evaluation.url       = url || null;
-    evaluation.source    = source || null;
+    // User-provided values take precedence over Claude's extraction
+    if (company)   evaluation.company   = company;
+    if (title)     evaluation.jobTitle  = title;
+    if (location)  evaluation.location  = location;
+
+    evaluation.id         = crypto.randomUUID();
+    evaluation.timestamp  = new Date().toISOString();
+    evaluation.scheduling = scheduling || null;
+    evaluation.url        = url || null;
+    evaluation.source     = source || null;
 
     state.pendingEval = evaluation;
     renderScorecard(evaluation, 'scorecard-content');
@@ -861,7 +912,8 @@ async function saveEvaluation() {
     const saved = state.pendingEval;
     state.pendingEval = null;
     // Clear form
-    ['input-url','input-source','input-description'].forEach(id => document.getElementById(id).value = '');
+    ['input-company','input-title','input-location','input-url','input-source','input-description'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('input-scheduling').value = '';
     showToast('Saved!', 'success');
     state.currentDetailId = saved.id;
     renderDetailScorecard(saved);
@@ -1025,7 +1077,7 @@ function renderScorecard(ev, containerId) {
       <div class="score-badge lg ${c}">${ev.overallScore}</div>
       <div class="sc-meta">
         <h2>${esc(ev.jobTitle || 'Unknown Role')}</h2>
-        <div class="sc-company">${esc(ev.company || '')}${ev.location ? ' &nbsp;·&nbsp; ' + esc(ev.location) : ''}</div>
+        <div class="sc-company">${esc(ev.company || '')}${ev.location ? ' &nbsp;·&nbsp; ' + esc(ev.location) : ''}${ev.scheduling ? ' &nbsp;·&nbsp; <span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700;background:var(--border);color:var(--text-muted)">' + esc(ev.scheduling) + '</span>' : ''}</div>
         <div class="sc-date">${fmtDate(ev.timestamp)}${ev.source ? ' &nbsp;·&nbsp; ' + esc(ev.source) : ''}</div>
       </div>
     </div>
@@ -1080,7 +1132,7 @@ function renderHistoryList() {
       <div class="score-badge ${c}">${ev.overallScore}</div>
       <div class="history-item-body">
         <div class="history-item-title">${esc(ev.jobTitle || 'Unknown Role')}</div>
-        <div class="history-item-sub">${esc(ev.company || '')}${ev.source ? ' · ' + esc(ev.source) : ''}</div>
+        <div class="history-item-sub">${esc(ev.company || '')}${ev.scheduling ? ' · ' + esc(ev.scheduling) : ''}${ev.source ? ' · ' + esc(ev.source) : ''}</div>
       </div>
       <div class="history-item-date">${fmtDate(ev.timestamp)}</div>
     </div>`;
