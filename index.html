@@ -344,6 +344,31 @@
     .feedback-notes { margin-bottom:10px; }
     .feedback-note { font-size:13px; color:var(--text-muted); padding:8px 12px; background:white; border-radius:8px; margin-bottom:4px; line-height:1.5; border:1px solid var(--border); }
 
+    /* ── Applications ── */
+    .app-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .app-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .app-company { font-size: 16px; font-weight: 700; color: var(--text); }
+    .app-title { font-size: 14px; color: var(--text-muted); }
+    .app-status-badge {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+    }
+    .app-status-applied      { background: #dbeafe; color: #1d4ed8; }
+    .app-status-acknowledged  { background: #fef3c7; color: #92400e; }
+    .app-status-interviewed   { background: #d1fae5; color: #065f46; }
+    .app-status-offered       { background: #d1fae5; color: #047857; border: 1.5px solid #047857; }
+    .app-status-denied        { background: #fee2e2; color: #991b1b; }
+    .app-timeline { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .app-ts { font-size: 11px; color: var(--text-muted); background: var(--bg); padding: 3px 8px; border-radius: 6px; }
+    .app-ts strong { color: var(--text); }
+    .app-emails { margin-top: 10px; }
+    .app-email-link { font-size: 12px; color: var(--primary); display: block; margin-top: 4px; }
+    .app-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .app-edit-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .app-edit-form .form-group { margin-bottom: 10px; }
+    .app-edit-form label { margin-bottom: 4px; }
+    .app-edit-form input, .app-edit-form select { padding: 10px 12px; font-size: 14px; }
+
     /* ── Responsive: desktop ── */
     @media (min-width: 900px) {
       #bottom-nav {
@@ -630,6 +655,14 @@
     </div>
   </div>
 
+  <!-- Applications -->
+  <div id="view-applications" class="view">
+    <div class="view-inner">
+      <div class="view-title">Applications</div>
+      <div id="app-list"></div>
+    </div>
+  </div>
+
   <!-- Settings -->
   <div id="view-settings" class="view">
     <div class="view-inner">
@@ -692,6 +725,10 @@
     <button class="nav-btn" data-view="reports" onclick="navigate('reports')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Reports
+    </button>
+    <button class="nav-btn" data-view="applications" onclick="navigate('applications')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Apps
     </button>
     <button class="nav-btn" data-view="profile" onclick="navigate('profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -1642,6 +1679,145 @@ function renderDetailFeedbackNotes() {
 }
 
 // ================================================================
+// APPLICATIONS
+// ================================================================
+let _applications = [];
+let _editingAppId = null;
+
+async function loadApplications() {
+  try {
+    const data = await readOD('applications.json');
+    _applications = Array.isArray(data) ? data : [];
+  } catch { _applications = []; }
+}
+
+async function saveApplications() {
+  await writeOD('applications.json', _applications);
+}
+
+function renderApplications() {
+  const el = document.getElementById('app-list');
+  if (!_applications.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:10px">📋</div><div>No applications logged yet.<br>Use Email Assistant to log job emails here.</div></div>';
+    return;
+  }
+  const sorted = [..._applications].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || ''));
+  el.innerHTML = sorted.map(app => {
+    const statusCls = 'app-status-' + (app.status || 'applied');
+    const statusLabel = (app.status || 'applied').charAt(0).toUpperCase() + (app.status || 'applied').slice(1);
+    const ts = app.timestamps || {};
+    const timeline = ['applied','acknowledged','interviewed','offered','denied']
+      .filter(s => ts[s])
+      .map(s => `<span class="app-ts"><strong>${s.charAt(0).toUpperCase() + s.slice(1)}:</strong> ${new Date(ts[s]).toLocaleDateString()}</span>`)
+      .join('');
+    const emails = (app.emails || []).map(e =>
+      `<div class="app-email-link">📧 ${esc(e.subject)} — ${esc(e.from || '')} (${(e.received_at || '').slice(0, 10)})</div>`
+    ).join('');
+    const isEditing = _editingAppId === app.id;
+
+    return `
+    <div class="app-card" id="app-${app.id}">
+      <div class="app-card-header">
+        <div>
+          <div class="app-company">${esc(app.company)}</div>
+          <div class="app-title">${esc(app.title || 'Unknown')}</div>
+        </div>
+        <span class="app-status-badge ${statusCls}">${statusLabel}</span>
+      </div>
+      ${timeline ? `<div class="app-timeline">${timeline}</div>` : ''}
+      ${emails ? `<div class="app-emails">${emails}</div>` : ''}
+      <div class="app-actions">
+        ${app.status !== 'acknowledged' && app.status !== 'interviewed' && app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-secondary" onclick="updateAppStatus('${app.id}','acknowledged')">Acknowledged</button>` : ''}
+        ${app.status !== 'interviewed' && app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-secondary" onclick="updateAppStatus('${app.id}','interviewed')">Interviewed</button>` : ''}
+        ${app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-primary" onclick="updateAppStatus('${app.id}','offered')">Offered</button>` : ''}
+        ${app.status !== 'denied' ? `<button class="btn btn-sm btn-danger" onclick="updateAppStatus('${app.id}','denied')">Denied</button>` : ''}
+        <button class="btn btn-sm btn-secondary" onclick="toggleEditApp('${app.id}')">${isEditing ? 'Cancel' : 'Edit'}</button>
+      </div>
+      ${isEditing ? renderEditForm(app) : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderEditForm(app) {
+  return `
+  <div class="app-edit-form">
+    <div class="form-group">
+      <label>Company</label>
+      <input type="text" id="edit-company-${app.id}" value="${esc(app.company || '')}">
+    </div>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="edit-title-${app.id}" value="${esc(app.title || '')}">
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="edit-status-${app.id}">
+        ${['applied','acknowledged','interviewed','offered','denied'].map(s =>
+          `<option value="${s}" ${app.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-sm btn-primary" onclick="saveEditApp('${app.id}')">Save</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteApp('${app.id}')">Delete</button>
+    </div>
+  </div>`;
+}
+
+function toggleEditApp(id) {
+  _editingAppId = _editingAppId === id ? null : id;
+  renderApplications();
+}
+
+async function saveEditApp(id) {
+  const app = _applications.find(a => a.id === id);
+  if (!app) return;
+  const newCompany = document.getElementById('edit-company-' + id).value.trim();
+  const newTitle = document.getElementById('edit-title-' + id).value.trim();
+  const newStatus = document.getElementById('edit-status-' + id).value;
+  if (!newCompany) { showToast('Company is required', 'error'); return; }
+  app.company = newCompany;
+  app.title = newTitle || 'Unknown';
+  if (newStatus !== app.status) {
+    app.status = newStatus;
+    if (!app.timestamps) app.timestamps = {};
+    if (!app.timestamps[newStatus]) app.timestamps[newStatus] = new Date().toISOString();
+  }
+  app.updated_at = new Date().toISOString();
+  _editingAppId = null;
+  try {
+    await saveApplications();
+    showToast('Application updated', 'success');
+  } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+  renderApplications();
+}
+
+async function updateAppStatus(id, newStatus) {
+  const app = _applications.find(a => a.id === id);
+  if (!app) return;
+  app.status = newStatus;
+  if (!app.timestamps) app.timestamps = {};
+  app.timestamps[newStatus] = new Date().toISOString();
+  app.updated_at = new Date().toISOString();
+  try {
+    await saveApplications();
+    showToast(`Status: ${newStatus}`, 'success');
+  } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+  renderApplications();
+}
+
+async function deleteApp(id) {
+  if (!confirm('Delete this application?')) return;
+  _applications = _applications.filter(a => a.id !== id);
+  _editingAppId = null;
+  try {
+    await saveApplications();
+    showToast('Application deleted', 'success');
+  } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+  renderApplications();
+}
+
+// ================================================================
 // NAVIGATION
 // ================================================================
 function navigate(view) {
@@ -1651,11 +1827,12 @@ function navigate(view) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === view);
   });
-  if (view === 'history')  renderHistoryList();
-  if (view === 'reports')  renderReportStats();
-  if (view === 'settings') updateSettingsView();
-  if (view === 'profile')  renderProfileView();
-  if (view === 'detail')   renderDetailFeedbackNotes();
+  if (view === 'history')      renderHistoryList();
+  if (view === 'reports')      renderReportStats();
+  if (view === 'settings')     updateSettingsView();
+  if (view === 'profile')      renderProfileView();
+  if (view === 'detail')       renderDetailFeedbackNotes();
+  if (view === 'applications') renderApplications();
   window.scrollTo(0, 0);
 }
 
@@ -1688,6 +1865,7 @@ async function onAuthenticated() {
   showLoading('Loading your data…');
   try {
     await loadFromOneDrive();
+    await loadApplications();
     hideLoading();
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
