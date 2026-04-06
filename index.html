@@ -8,7 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="JobScout">
   <meta name="theme-color" content="#10b981">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <title>JobScout</title>
   <style>
@@ -84,10 +85,7 @@
     #login-screen.hidden { display: none; }
     .login-logo {
       width: 80px; height: 80px;
-      background: var(--primary); border-radius: 22px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 34px; font-weight: 800; color: white;
-      letter-spacing: -1px;
+      border-radius: 18px;
     }
     .login-title { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
     .login-sub { color: var(--text-muted); text-align: center; max-width: 300px; line-height: 1.5; font-size: 15px; }
@@ -132,7 +130,8 @@
       display: flex; align-items: center; justify-content: space-between;
       padding-left: 16px; padding-right: 16px;
     }
-    .header-title { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: -0.3px; }
+    .header-title { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+    .header-icon { width: 28px; height: 28px; border-radius: 6px; }
     .header-user { font-size: 12px; color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ── Views ── */
@@ -429,7 +428,7 @@
 
 <!-- ── Login ── -->
 <div id="login-screen">
-  <div class="login-logo">JS</div>
+  <img class="login-logo" src="icon-192.png" alt="JobScout">
   <div class="login-title">JobScout</div>
   <div class="login-sub">Evaluate job listings against your priorities. Track your search. Share your progress.</div>
   <button class="btn-ms" onclick="signIn()" disabled>
@@ -448,7 +447,7 @@
 <div id="app" class="hidden">
 
   <div id="header">
-    <div class="header-title">JobScout</div>
+    <div class="header-title"><img class="header-icon" src="icon-192.png" alt="">JobScout</div>
     <div class="header-user" id="header-user"></div>
   </div>
 

@@ -1,4 +1,4 @@
-const CACHE = 'jobscout-v5';
+const CACHE = 'jobscout-v6';
 const CACHE_URLS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
