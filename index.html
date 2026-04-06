@@ -344,6 +344,29 @@
     .feedback-notes { margin-bottom:10px; }
     .feedback-note { font-size:13px; color:var(--text-muted); padding:8px 12px; background:white; border-radius:8px; margin-bottom:4px; line-height:1.5; border:1px solid var(--border); }
 
+    /* ── Dashboard ── */
+    .dash-section { margin-bottom: 20px; }
+    .dash-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 10px; }
+    .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .dash-stat { background: white; border-radius: 14px; padding: 16px 10px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .dash-stat-value { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--primary); }
+    .dash-stat-value.streak { color: #ea580c; }
+    .dash-stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+    .dash-funnel { display: flex; flex-direction: column; gap: 6px; }
+    .dash-funnel-row { display: flex; align-items: center; gap: 10px; }
+    .dash-funnel-label { font-size: 13px; font-weight: 600; color: var(--text); width: 110px; flex-shrink: 0; }
+    .dash-funnel-bar-bg { flex: 1; height: 28px; background: var(--bg); border-radius: 8px; overflow: hidden; position: relative; }
+    .dash-funnel-bar { height: 100%; border-radius: 8px; transition: width 0.5s ease; min-width: 2px; }
+    .dash-funnel-count { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: var(--text); }
+    .dash-top-match { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); cursor: pointer; }
+    .dash-top-match:active { transform: scale(0.98); }
+    .dash-top-match-score { font-size: 32px; font-weight: 800; color: var(--high); float: right; margin-left: 12px; }
+    .dash-top-match-company { font-size: 16px; font-weight: 700; }
+    .dash-top-match-title { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+    .dash-motivation { background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border-radius: 14px; padding: 18px; text-align: center; border: 1px solid #bbf7d0; }
+    .dash-motivation-icon { font-size: 28px; margin-bottom: 6px; }
+    .dash-motivation-text { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.5; }
+
     /* ── Applications ── */
     .app-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
     .app-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
@@ -430,7 +453,15 @@
   </div>
 
   <!-- Evaluate -->
-  <div id="view-evaluate" class="view active">
+  <!-- Dashboard -->
+  <div id="view-dashboard" class="view active">
+    <div class="view-inner">
+      <div class="view-title">Dashboard</div>
+      <div id="dash-content"></div>
+    </div>
+  </div>
+
+  <div id="view-evaluate" class="view">
     <div class="view-inner">
       <div class="view-title">Evaluate a Job</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
@@ -714,17 +745,17 @@
 
   <!-- Bottom Nav -->
   <nav id="bottom-nav">
-    <button class="nav-btn active" data-view="evaluate" onclick="navigate('evaluate')">
+    <button class="nav-btn active" data-view="dashboard" onclick="navigate('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Home
+    </button>
+    <button class="nav-btn" data-view="evaluate" onclick="navigate('evaluate')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Evaluate
     </button>
     <button class="nav-btn" data-view="history" onclick="navigate('history')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       History
-    </button>
-    <button class="nav-btn" data-view="reports" onclick="navigate('reports')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      Reports
     </button>
     <button class="nav-btn" data-view="applications" onclick="navigate('applications')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -1818,6 +1849,165 @@ async function deleteApp(id) {
 }
 
 // ================================================================
+// DASHBOARD
+// ================================================================
+function renderDashboard() {
+  const evals = state.evaluations || [];
+  const apps = _applications || [];
+  const el = document.getElementById('dash-content');
+
+  // ── Streak: consecutive days with at least one evaluation ──
+  const today = new Date(); today.setHours(0,0,0,0);
+  let streak = 0;
+  if (evals.length) {
+    const evalDays = new Set(evals.map(e => {
+      const d = new Date(e.timestamp); d.setHours(0,0,0,0);
+      return d.getTime();
+    }));
+    let checkDay = new Date(today);
+    // if no eval today, start from yesterday
+    if (!evalDays.has(checkDay.getTime())) checkDay.setDate(checkDay.getDate() - 1);
+    while (evalDays.has(checkDay.getTime())) {
+      streak++;
+      checkDay.setDate(checkDay.getDate() - 1);
+    }
+  }
+
+  // ── This week count ──
+  const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+  const thisWeek = evals.filter(e => new Date(e.timestamp) >= weekAgo).length;
+  const prevWeekStart = new Date(weekAgo); prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const prevWeek = evals.filter(e => { const d = new Date(e.timestamp); return d >= prevWeekStart && d < weekAgo; }).length;
+  const weekDelta = thisWeek - prevWeek;
+  const weekTrend = weekDelta > 0 ? `<span style="color:var(--high);font-size:12px;font-weight:600">+${weekDelta} vs last wk</span>`
+                  : weekDelta < 0 ? `<span style="color:var(--mid);font-size:12px;font-weight:600">${weekDelta} vs last wk</span>` : '';
+
+  // ── Applications in motion (not denied) ──
+  const inMotion = apps.filter(a => a.status !== 'denied').length;
+
+  // ── Pipeline funnel ──
+  const pipeline = { applied: 0, acknowledged: 0, interviewed: 0, offered: 0, denied: 0 };
+  apps.forEach(a => { if (pipeline.hasOwnProperty(a.status)) pipeline[a.status]++; });
+  const maxPipeline = Math.max(1, ...Object.values(pipeline));
+  const funnelColors = { applied: '#3b82f6', acknowledged: '#f59e0b', interviewed: '#10b981', offered: '#047857', denied: '#ef4444' };
+
+  // ── Response rate ──
+  const totalApps = apps.length;
+  const responded = apps.filter(a => a.status !== 'applied').length;
+  const responseRate = totalApps > 0 ? Math.round((responded / totalApps) * 100) : 0;
+
+  // ── Quality metrics ──
+  const avgScore = evals.length ? (evals.reduce((s, e) => s + e.overallScore, 0) / evals.length) : 0;
+  const strongFits = evals.filter(e => e.overallScore >= 8).length;
+
+  // ── Score trend (last 5 vs previous 5) ──
+  const sorted = [...evals].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  let scoreTrend = '';
+  if (sorted.length >= 10) {
+    const recent5 = sorted.slice(0, 5).reduce((s, e) => s + e.overallScore, 0) / 5;
+    const prev5 = sorted.slice(5, 10).reduce((s, e) => s + e.overallScore, 0) / 5;
+    const diff = recent5 - prev5;
+    if (diff > 0.3) scoreTrend = '<span style="color:var(--high);font-size:12px;font-weight:600">trending up</span>';
+    else if (diff < -0.3) scoreTrend = '<span style="color:var(--mid);font-size:12px;font-weight:600">trending down</span>';
+  }
+
+  // ── Top match ──
+  const topMatch = sorted.length ? sorted.reduce((best, e) => e.overallScore > best.overallScore ? e : best) : null;
+
+  // ── Motivational message ──
+  const motivation = getMotivation(streak, thisWeek, inMotion, strongFits, responseRate, evals.length);
+
+  // ── Render ──
+  el.innerHTML = `
+    <div class="dash-section">
+      <div class="dash-motivation">
+        <div class="dash-motivation-icon">${motivation.icon}</div>
+        <div class="dash-motivation-text">${motivation.text}</div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+      <div class="dash-section-title">Activity & Momentum</div>
+      <div class="dash-stats">
+        <div class="dash-stat">
+          <div class="dash-stat-value streak">${streak > 0 ? streak + '🔥' : '0'}</div>
+          <div class="dash-stat-label">Day Streak</div>
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-value">${thisWeek}</div>
+          <div class="dash-stat-label">This Week</div>
+          ${weekTrend ? `<div style="margin-top:4px">${weekTrend}</div>` : ''}
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-value">${inMotion}</div>
+          <div class="dash-stat-label">In Motion</div>
+        </div>
+      </div>
+    </div>
+
+    ${totalApps > 0 ? `
+    <div class="dash-section">
+      <div class="dash-section-title">Pipeline</div>
+      <div class="dash-funnel">
+        ${['applied','acknowledged','interviewed','offered','denied'].map(stage => `
+          <div class="dash-funnel-row">
+            <div class="dash-funnel-label">${stage.charAt(0).toUpperCase() + stage.slice(1)}</div>
+            <div class="dash-funnel-bar-bg">
+              <div class="dash-funnel-bar" style="width:${Math.round((pipeline[stage]/maxPipeline)*100)}%;background:${funnelColors[stage]}"></div>
+              <div class="dash-funnel-count">${pipeline[stage]}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--text-muted)">
+        Response rate: <strong style="color:var(--text)">${responseRate}%</strong> of applications moved past Applied
+      </div>
+    </div>` : ''}
+
+    <div class="dash-section">
+      <div class="dash-section-title">Search Quality</div>
+      <div class="dash-stats">
+        <div class="dash-stat">
+          <div class="dash-stat-value">${evals.length ? avgScore.toFixed(1) : '—'}</div>
+          <div class="dash-stat-label">Avg Score</div>
+          ${scoreTrend ? `<div style="margin-top:4px">${scoreTrend}</div>` : ''}
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-value">${strongFits}</div>
+          <div class="dash-stat-label">Strong Fits</div>
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-value">${evals.length}</div>
+          <div class="dash-stat-label">Total Evals</div>
+        </div>
+      </div>
+    </div>
+
+    ${topMatch ? `
+    <div class="dash-section">
+      <div class="dash-section-title">Top Match</div>
+      <div class="dash-top-match" onclick="state.currentDetailId='${topMatch.id}';renderDetailScorecard(state.evaluations.find(e=>e.id==='${topMatch.id}'));navigate('detail')">
+        <div class="dash-top-match-score">${topMatch.overallScore}</div>
+        <div class="dash-top-match-company">${esc(topMatch.company || 'Unknown')}</div>
+        <div class="dash-top-match-title">${esc(topMatch.jobTitle || '')}</div>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+function getMotivation(streak, thisWeek, inMotion, strongFits, responseRate, totalEvals) {
+  if (totalEvals === 0) return { icon: '🚀', text: 'Ready to start your job search? Head to Evaluate and score your first listing!' };
+  if (streak >= 7) return { icon: '🔥', text: `${streak}-day streak! Your consistency is building serious momentum. Keep it up!` };
+  if (streak >= 3) return { icon: '⚡', text: `${streak} days in a row — you're building a great rhythm. Momentum wins the race.` };
+  if (inMotion >= 5) return { icon: '🎯', text: `${inMotion} applications in motion. Your pipeline is active — something good is coming.` };
+  if (strongFits >= 3) return { icon: '💪', text: `${strongFits} strong fits found! You're targeting the right roles. Quality over quantity.` };
+  if (responseRate >= 50) return { icon: '📬', text: `${responseRate}% response rate — your applications are getting noticed. Stay the course!` };
+  if (thisWeek >= 5) return { icon: '🏃', text: `${thisWeek} evaluations this week. Strong effort — keep exploring and the right fit will come.` };
+  if (thisWeek > 0) return { icon: '🌱', text: `${thisWeek} evaluation${thisWeek > 1 ? 's' : ''} this week. Every listing you review sharpens your sense of what you want.` };
+  return { icon: '💡', text: 'Pick up where you left off — even one evaluation a day keeps your search moving forward.' };
+}
+
+// ================================================================
 // NAVIGATION
 // ================================================================
 function navigate(view) {
@@ -1827,6 +2017,7 @@ function navigate(view) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === view);
   });
+  if (view === 'dashboard')     renderDashboard();
   if (view === 'history')      renderHistoryList();
   if (view === 'reports')      renderReportStats();
   if (view === 'settings')     updateSettingsView();
@@ -1873,7 +2064,7 @@ async function onAuthenticated() {
       navigate('settings');
       showToast('Welcome! Add your API key in Settings to get started.', '');
     } else {
-      navigate('evaluate');
+      navigate('dashboard');
     }
   } catch (e) {
     hideLoading();
