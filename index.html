@@ -2074,6 +2074,13 @@ async function onAuthenticated() {
 
 async function init() {
   try {
+    // If running inside a popup (MSAL auth callback), let MSAL handle it and stop.
+    // The parent window will get the result — don't render the app in the popup.
+    if (window.opener && window.opener !== window) {
+      await msalInstance.handleRedirectPromise();
+      return;
+    }
+
     // Handle redirect flow (fallback on mobile if popup is blocked)
     const redirectResult = await msalInstance.handleRedirectPromise();
     if (redirectResult) {
