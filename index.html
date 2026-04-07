@@ -390,6 +390,10 @@
     .app-edit-form .form-group { margin-bottom: 10px; }
     .app-edit-form label { margin-bottom: 4px; }
     .app-edit-form input, .app-edit-form select { padding: 10px 12px; font-size: 14px; }
+    .ts-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .ts-edit-label { flex: 0 0 100px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .ts-edit-row input[type="date"] { flex: 1; min-width: 0; }
+    .ts-edit-row .ts-clear { flex-shrink: 0; }
 
     /* ── Responsive: desktop ── */
     @media (min-width: 900px) {
@@ -1757,10 +1761,6 @@ function renderApplications() {
       ${timeline ? `<div class="app-timeline">${timeline}</div>` : ''}
       ${emails ? `<div class="app-emails">${emails}</div>` : ''}
       <div class="app-actions">
-        ${app.status !== 'acknowledged' && app.status !== 'interviewed' && app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-secondary" onclick="updateAppStatus('${app.id}','acknowledged')">Acknowledged</button>` : ''}
-        ${app.status !== 'interviewed' && app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-secondary" onclick="updateAppStatus('${app.id}','interviewed')">Interviewed</button>` : ''}
-        ${app.status !== 'offered' && app.status !== 'denied' ? `<button class="btn btn-sm btn-primary" onclick="updateAppStatus('${app.id}','offered')">Offered</button>` : ''}
-        ${app.status !== 'denied' ? `<button class="btn btn-sm btn-danger" onclick="updateAppStatus('${app.id}','denied')">Denied</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="toggleEditApp('${app.id}')">${isEditing ? 'Cancel' : 'Edit'}</button>
       </div>
       ${isEditing ? renderEditForm(app) : ''}
@@ -1768,7 +1768,19 @@ function renderApplications() {
   }).join('');
 }
 
+function isoToDateInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function renderEditForm(app) {
+  const ts = app.timestamps || {};
+  const stages = ['applied','acknowledged','interviewed','offered','denied'];
   return `
   <div class="app-edit-form">
     <div class="form-group">
@@ -1782,10 +1794,20 @@ function renderEditForm(app) {
     <div class="form-group">
       <label>Status</label>
       <select id="edit-status-${app.id}">
-        ${['applied','acknowledged','interviewed','offered','denied'].map(s =>
+        ${stages.map(s =>
           `<option value="${s}" ${app.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
         ).join('')}
       </select>
+    </div>
+    <div class="form-group">
+      <label>Status Dates</label>
+      ${stages.map(s => `
+        <div class="ts-edit-row">
+          <span class="ts-edit-label">${s.charAt(0).toUpperCase() + s.slice(1)}</span>
+          <input type="date" id="edit-ts-${s}-${app.id}" value="${isoToDateInput(ts[s])}">
+          <button type="button" class="btn btn-sm btn-secondary ts-clear" onclick="document.getElementById('edit-ts-${s}-${app.id}').value=''">Clear</button>
+        </div>
+      `).join('')}
     </div>
     <div class="btn-row">
       <button class="btn btn-sm btn-primary" onclick="saveEditApp('${app.id}')">Save</button>
@@ -1808,11 +1830,25 @@ async function saveEditApp(id) {
   if (!newCompany) { showToast('Company is required', 'error'); return; }
   app.company = newCompany;
   app.title = newTitle || 'Unknown';
-  if (newStatus !== app.status) {
-    app.status = newStatus;
-    if (!app.timestamps) app.timestamps = {};
-    if (!app.timestamps[newStatus]) app.timestamps[newStatus] = new Date().toISOString();
-  }
+  app.status = newStatus;
+
+  // Apply timestamp edits — empty input removes the timestamp
+  if (!app.timestamps) app.timestamps = {};
+  ['applied','acknowledged','interviewed','offered','denied'].forEach(s => {
+    const val = document.getElementById(`edit-ts-${s}-${id}`).value;
+    if (val) {
+      // Preserve time-of-day if it was already set, otherwise use noon local
+      const existing = app.timestamps[s] ? new Date(app.timestamps[s]) : null;
+      const d = new Date(val + 'T12:00:00');
+      if (existing && !isNaN(existing.getTime())) {
+        d.setHours(existing.getHours(), existing.getMinutes(), existing.getSeconds());
+      }
+      app.timestamps[s] = d.toISOString();
+    } else {
+      delete app.timestamps[s];
+    }
+  });
+
   app.updated_at = new Date().toISOString();
   _editingAppId = null;
   try {
