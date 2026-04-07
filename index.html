@@ -367,6 +367,15 @@
     .dash-motivation-text { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.5; }
 
     /* ── Applications ── */
+    .apps-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .apps-filter {
+      padding: 8px 32px 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      border: 1.5px solid var(--border); background: white; color: var(--text);
+      cursor: pointer; font-family: inherit;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
     .app-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
     .app-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .app-company { font-size: 16px; font-weight: 700; color: var(--text); }
@@ -692,7 +701,17 @@
   <!-- Applications -->
   <div id="view-applications" class="view">
     <div class="view-inner">
-      <div class="view-title">Applications</div>
+      <div class="apps-header">
+        <div class="view-title" style="margin:0">Applications</div>
+        <select id="app-filter" class="apps-filter" onchange="setAppFilter(this.value)">
+          <option value="all">All</option>
+          <option value="applied">Applied</option>
+          <option value="acknowledged">Acknowledged</option>
+          <option value="interviewed">Interviewed</option>
+          <option value="offered">Offered</option>
+          <option value="denied">Denied</option>
+        </select>
+      </div>
       <div id="app-list"></div>
     </div>
   </div>
@@ -1717,6 +1736,12 @@ function renderDetailFeedbackNotes() {
 // ================================================================
 let _applications = [];
 let _editingAppId = null;
+let _appFilter = 'all';
+
+function setAppFilter(val) {
+  _appFilter = val;
+  renderApplications();
+}
 
 async function loadApplications() {
   try {
@@ -1735,7 +1760,14 @@ function renderApplications() {
     el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:10px">📋</div><div>No applications logged yet.<br>Use Email Assistant to log job emails here.</div></div>';
     return;
   }
-  const sorted = [..._applications].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || ''));
+  const filtered = _appFilter === 'all'
+    ? _applications
+    : _applications.filter(a => (a.status || 'applied') === _appFilter);
+  if (!filtered.length) {
+    el.innerHTML = `<div style="text-align:center;padding:48px 20px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:10px">🔍</div><div>No applications with status "${_appFilter}".</div></div>`;
+    return;
+  }
+  const sorted = [...filtered].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || ''));
   el.innerHTML = sorted.map(app => {
     const statusCls = 'app-status-' + (app.status || 'applied');
     const statusLabel = (app.status || 'applied').charAt(0).toUpperCase() + (app.status || 'applied').slice(1);
